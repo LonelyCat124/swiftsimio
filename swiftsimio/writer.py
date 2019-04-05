@@ -10,7 +10,7 @@ import unyt
 import h5py
 import numpy as np
 
-from typing import Union, List, Callable
+from typing import Union, List
 from functools import reduce
 
 from swiftsimio import metadata
@@ -207,8 +207,7 @@ def generate_deleter(name: str):
     return deleter
 
 
-def generate_dataset(unit_system: Union[unyt.UnitSystem, str], particle_type: int, 
-     unit_fields_generate_units: Callable[...,dict] = metadata.unit_fields.generate_units):
+def generate_dataset(unit_system: Union[unyt.UnitSystem, str], particle_type: int):
     """
     Generates a SWIFTWriterParticleDataset _class_ that corresponds to the
     particle type given.
@@ -234,7 +233,7 @@ def generate_dataset(unit_system: Union[unyt.UnitSystem, str], particle_type: in
     )
 
     # Get the unit dimensions
-    dimensions = metadata.unit_fields.generate_dimensions(unit_fields_generate_units)
+    dimensions = metadata.unit_fields.generate_dimensions()
 
     for name in getattr(metadata.required_fields, particle_name).keys():
         setattr(
@@ -272,7 +271,6 @@ class SWIFTWriterDataset(object):
         dimension=3,
         compress=True,
         extra_header: Union[None, dict] = None,
-        unit_fields_generate_units: Callable[...,dict] = metadata.unit_fields.generate_units,
     ):
         """
         Requires a unit system, either one from unyt or a string describing a
@@ -283,7 +281,7 @@ class SWIFTWriterDataset(object):
         available. If you are generating initial conditions for a dimensionality
         other than 3, you will want to set the (integer) dimension parameter.
         """
-        self.unit_fields_generate_units = unit_fields_generate_units
+
         if isinstance(unit_system, str):
             self.unit_system = unyt.unit_systems.unit_system_registry[unit_system]
         else:
@@ -310,8 +308,7 @@ class SWIFTWriterDataset(object):
 
     def create_particle_datasets(self):
         for number, name in metadata.particle_types.particle_name_underscores.items():
-            setattr(self, name, generate_dataset(self.unit_system, number, 
-                    self.unit_fields_generate_units))
+            setattr(self, name, generate_dataset(self.unit_system, number))
 
         return
 
@@ -336,9 +333,9 @@ class SWIFTWriterDataset(object):
         Writes metadata to file based on the information passed to the object
         and the information in the particle groups.
         """
-        part_types = max(metadata.particle.particle_name_underscores.keys())+1
-        number_of_particles = [0] * part_types
-        mass_table = [0.0] * part_types
+
+        number_of_particles = [0] * 6
+        mass_table = [0.0] * 6
 
         for number, name in metadata.particle_types.particle_name_underscores.items():
             if name in names_to_write:
